@@ -27,5 +27,6 @@ module Fluent
   HandleTagNameMixin = Fluent::Compat::HandleTagNameMixin
   SetTimeKeyMixin = Fluent::Compat::SetTimeKeyMixin
   SetTagKeyMixin = Fluent::Compat::SetTagKeyMixin
+  # TODO: move TypeConverter to 'fluent/type' or so
   TypeConverter = Fluent::Compat::TypeConverter
 end

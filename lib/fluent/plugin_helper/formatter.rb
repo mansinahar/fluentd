@@ -73,13 +73,15 @@ module Fluent
       def configure(conf)
         super
 
-        @formatter_configs.each do |section|
-          if @_formatters[section.usage]
-            raise Fluent::ConfigError, "duplicated formatter configured: #{section.usage}"
+        if @formatter_configs
+          @formatter_configs.each do |section|
+            if @_formatters[section.usage]
+              raise Fluent::ConfigError, "duplicated formatter configured: #{section.usage}"
+            end
+            formatter = Plugin.new_formatter(section[:@type], parent: self)
+            formatter.configure(section.corresponding_config_element)
+            @_formatters[section.usage] = formatter
           end
-          formatter = Plugin.new_formatter(section[:@type], parent: self)
-          formatter.configure(section.corresponding_config_element)
-          @_formatters[section.usage] = formatter
         end
       end
 
