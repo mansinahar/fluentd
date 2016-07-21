@@ -82,6 +82,15 @@ module Fluent
         end
         nil
       }
+      @rpc_server.mount_proc('/api/plugins.flushBuffersAndKillWorkers') { |req, res|
+        $log.debug "fluentd RPC got /api/plugins.flushBuffersAndKillWorkers request"
+        unless Fluent.windows?
+          send_flush_buffer_signal
+          $log.info "Done here!"
+          Fluent::Supervisor.running_server_engine.server.stop(true)
+        end
+        nil
+      }
       @rpc_server.mount_proc('/api/config.reload') { |req, res|
         $log.debug "fluentd RPC got /api/config.reload request"
         if Fluent.windows?
@@ -121,7 +130,7 @@ module Fluent
 
       trap :USR1 do
         $log.debug "fluentd supervisor process get SIGUSR1"
-        supervisor_sigusr1_handler
+        send_flush_buffer_signal
       end unless Fluent.windows?
     end
 
@@ -129,7 +138,7 @@ module Fluent
       kill_worker
     end
 
-    def supervisor_sigusr1_handler
+    def send_flush_buffer_signal
       if log = config[:logger_initializer]
         log.reopen!
       end
@@ -326,6 +335,14 @@ module Fluent
       }
     end
 
+    def self.running_server_engine
+      @@server_engine
+    end
+
+    def set_server_engine(se)
+      @@server_engine = se
+    end
+
     def initialize(opt)
       @daemonize = opt[:daemonize]
       @supervise = opt[:supervise]
@@ -483,6 +500,7 @@ module Fluent
       se = ServerEngine.create(ServerModule, WorkerModule){
         Fluent::Supervisor.load_config(@config_path, params)
       }
+      set_server_engine(se)
       se.run
     end
 
@@ -515,12 +533,12 @@ module Fluent
       end
 
       trap :USR1 do
+        $log.debug "fluentd main process get SIGUSR1"
         flush_buffer
       end unless Fluent.windows?
     end
 
     def flush_buffer
-      $log.debug "fluentd main process get SIGUSR1"
       $log.info "force flushing buffered events"
       @log.reopen!
 
